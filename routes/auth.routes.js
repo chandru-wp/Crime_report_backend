@@ -8,6 +8,7 @@ router.post("/login", authController.login);
 router.get("/profile", authenticate, authController.getProfile);
 router.get("/users", authenticate, isAdmin, authController.getAllUsers);
 router.patch("/users/:userId/role", authenticate, isAdmin, authController.updateUserRole);
+router.patch("/users/:userId", authenticate, isAdmin, authController.updateUser);
 router.delete("/users/:userId", authenticate, isAdmin, authController.deleteUser);
 router.post("/create-admin", authenticate, isAdmin, authController.createAdmin);
 

@@ -186,3 +186,38 @@ exports.deleteUser = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
+exports.updateUser = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { name, email, password } = req.body;
+
+    // Build update object
+    const updateData = {};
+    if (name) updateData.name = name;
+    if (email) updateData.email = email;
+    if (password) {
+      const hashedPassword = await bcrypt.hash(password, 10);
+      updateData.password = hashedPassword;
+    }
+
+    // Check if email already exists (if changing email)
+    if (email) {
+      const existingUser = await prisma.user.findUnique({ where: { email } });
+      if (existingUser && existingUser.id !== userId) {
+        return res.status(400).json({ message: "Email already in use" });
+      }
+    }
+
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: updateData,
+      select: { id: true, email: true, name: true, role: true },
+    });
+
+    res.json({ message: "User updated successfully", user });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
