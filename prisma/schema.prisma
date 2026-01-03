@@ -21,6 +21,7 @@ model Crime {
   title       String
   description String
   location    String
+  photo       String?
   status      String   @default("Pending")
   createdAt   DateTime @default(now())
 }

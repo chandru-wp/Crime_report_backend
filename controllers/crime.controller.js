@@ -3,10 +3,10 @@ const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 
 exports.createCrime = async (req, res) => {
-  const { title, description, location } = req.body;
+  const { title, description, location, photo } = req.body;
 
   const crime = await prisma.crime.create({
-    data: { title, description, location }
+    data: { title, description, location, photo }
   });
 
   res.json(crime);
@@ -43,7 +43,7 @@ exports.updateCrimeStatus = async (req, res) => {
 exports.updateCrime = async (req, res) => {
   try {
     const { crimeId } = req.params;
-    const { title, description, location, status } = req.body;
+    const { title, description, location, status, photo } = req.body;
 
     // Build update data object
     const updateData = {};
@@ -51,6 +51,7 @@ exports.updateCrime = async (req, res) => {
     if (description) updateData.description = description;
     if (location) updateData.location = location;
     if (status) updateData.status = status;
+    if (photo !== undefined) updateData.photo = photo;
 
     // Validate status if provided
     if (status) {
