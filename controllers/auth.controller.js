@@ -166,3 +166,23 @@ exports.createAdmin = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
+exports.deleteUser = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    // Prevent deleting yourself
+    if (userId === req.userId) {
+      return res.status(400).json({ message: "Cannot delete your own account" });
+    }
+
+    const user = await prisma.user.delete({
+      where: { id: userId },
+    });
+
+    res.json({ message: "User deleted successfully", user });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
