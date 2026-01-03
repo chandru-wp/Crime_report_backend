@@ -12,6 +12,9 @@ const corsOptions = {
   origin: [
     "http://localhost:5173",
     "http://localhost:3000",
+    "http://cr-mgt.chandrukannan.me",
+    "https://cr-mgt.chandrukannan.me",
+    "https://chandru-wp.github.io",
     process.env.FRONTEND_URL
   ].filter(Boolean),
   credentials: true,
