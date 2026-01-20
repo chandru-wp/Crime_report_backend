@@ -1,6 +1,15 @@
 const { PrismaClient } = require("@prisma/client");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const axios = require("axios");
+const admin = require("firebase-admin");
+
+// Initialize Firebase Admin (Only if not already initialized)
+if (!admin.apps.length) {
+  admin.initializeApp({
+    projectId: process.env.FIREBASE_PROJECT_ID || "crime-management-system-651ab",
+  });
+}
 
 const prisma = new PrismaClient();
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-change-this";
@@ -54,6 +63,13 @@ exports.login = async (req, res) => {
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) {
       return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+    // Check if user has a password (might be a social-only account)
+    if (!user.password) {
+      return res.status(401).json({ 
+        message: "This account was created using social login. Please use Google or Facebook to sign in." 
+      });
     }
 
     // Check password
@@ -219,5 +235,141 @@ exports.updateUser = async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+exports.googleLogin = async (req, res) => {
+  try {
+    const { tokenId } = req.body;
+    
+    // Verify Firebase ID Token
+    const decodedToken = await admin.auth().verifyIdToken(tokenId);
+    const { email, name, uid: googleId, picture } = decodedToken;
+
+    // 1. Try to find user by Google ID first
+    let user = await prisma.user.findUnique({
+      where: { googleId }
+    });
+
+    // 2. If not found, try to find by email
+    if (!user && email) {
+      user = await prisma.user.findUnique({
+        where: { email }
+      });
+
+      if (user) {
+        // Link google account
+        if (!user.googleId) {
+          user = await prisma.user.update({
+            where: { id: user.id },
+            data: { googleId }
+          });
+        }
+      }
+    }
+
+    // 3. Create if not found
+    if (!user) {
+      user = await prisma.user.create({
+        data: {
+          email,
+          name: name || email.split('@')[0],
+          googleId,
+          password: null, // No password for social login
+          role: "user",
+        },
+      });
+    }
+
+    // Generate token
+    const token = jwt.sign(
+      { userId: user.id, email: user.email, role: user.role },
+      JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    res.json({
+      message: "Google login successful",
+      token,
+      user: { id: user.id, email: user.email, name: user.name, role: user.role },
+    });
+  } catch (error) {
+    console.error("Google Login Error:", error);
+    res.status(500).json({ message: "Google login failed", error: error.message });
+  }
+};
+
+exports.facebookLogin = async (req, res) => {
+  try {
+    const { accessToken, userID, isFirebase } = req.body;
+    let email, name, facebookId;
+
+    if (isFirebase) {
+      // Verify Firebase ID Token
+      const decodedToken = await admin.auth().verifyIdToken(accessToken);
+      email = decodedToken.email;
+      name = decodedToken.name;
+      facebookId = decodedToken.uid; // uid in firebase for FB login
+    } else {
+      // Verify legacy Facebook token
+      const fbResponse = await axios.get(
+        `https://graph.facebook.com/me?fields=id,name,email&access_token=${accessToken}`
+      );
+      email = fbResponse.data.email;
+      name = fbResponse.data.name;
+      facebookId = fbResponse.data.id;
+    }
+
+    // 1. Try to find user by Facebook ID first
+    let user = await prisma.user.findUnique({
+      where: { facebookId }
+    });
+
+    // 2. If not found, try to find by email (to link account)
+    if (!user && email) {
+      user = await prisma.user.findUnique({
+        where: { email }
+      });
+
+      if (user) {
+        // Link facebook account to existing email user
+        // Ensure this user doesn't already have a DIFFERENT facebookId (unlikely if logic is correct)
+        if (!user.facebookId) {
+             user = await prisma.user.update({
+              where: { id: user.id },
+              data: { facebookId }
+            });
+        }
+      }
+    }
+
+    // 3. If still not found, create new user
+    if (!user) {
+      user = await prisma.user.create({
+        data: {
+          email: email || `${facebookId}@facebook.com`,
+          name: name || email?.split('@')[0] || "Facebook User",
+          facebookId,
+          password: null,
+          role: "user",
+        },
+      });
+    }
+
+    // Generate token
+    const token = jwt.sign(
+      { userId: user.id, email: user.email, role: user.role },
+      JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    res.json({
+      message: "Facebook login successful",
+      token,
+      user: { id: user.id, email: user.email, name: user.name, role: user.role },
+    });
+  } catch (error) {
+    console.error("Facebook Login Error:", error);
+    res.status(500).json({ message: "Facebook login failed", error: error.message });
   }
 };

@@ -12,6 +12,7 @@ const corsOptions = {
   origin: [
     "http://localhost:5173",
     "http://localhost:3000",
+    "http://localhost:10000",
     "http://cr-mgt.chandrukannan.me",
     "https://cr-mgt.chandrukannan.me",
     process.env.FRONTEND_URL
@@ -23,6 +24,13 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 app.use(express.json());
+
+// Security headers for Firebase Auth popups
+app.use((req, res, next) => {
+  res.setHeader("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
+  res.setHeader("Cross-Origin-Embedder-Policy", "require-corp");
+  next();
+});
 
 app.use("/api/auth", authRoutes);
 app.use("/api/crimes", crimeRoutes);
