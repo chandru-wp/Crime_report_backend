@@ -28,10 +28,17 @@ exports.getCrimes = async (req, res) => {
   try {
     const { userId, userRole } = req;
     
+    console.log("=== GET CRIMES API CALLED ===");
+    console.log("User ID:", userId);
+    console.log("User Role:", userRole);
+    
     let whereClause = {};
     // If not admin, only show own crimes
     if (userRole !== 'admin') {
       whereClause = { userId: userId };
+      console.log("User is NOT admin - filtering by userId");
+    } else {
+      console.log("User IS admin - showing all crimes");
     }
 
     const crimes = await prisma.crime.findMany({
@@ -43,6 +50,9 @@ exports.getCrimes = async (req, res) => {
         }
       }
     });
+    
+    console.log(`Returning ${crimes.length} crimes`);
+    console.log("==============================\n");
     
     res.json(crimes);
   } catch (error) {
