@@ -3,18 +3,52 @@ const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 
 exports.createCrime = async (req, res) => {
-  const { title, description, location, photo } = req.body;
+  try {
+    const { title, description, location, photo } = req.body;
+    const userId = req.userId; // valid because of authenticate middleware
 
-  const crime = await prisma.crime.create({
-    data: { title, description, location, photo }
-  });
+    const crime = await prisma.crime.create({
+      data: { 
+        title, 
+        description, 
+        location, 
+        photo,
+        userId: userId 
+      }
+    });
 
-  res.json(crime);
+    res.json(crime);
+  } catch (error) {
+    console.error("Create Crime Error:", error);
+    res.status(500).json({ message: "Failed to create report", error: error.message });
+  }
 };
 
 exports.getCrimes = async (req, res) => {
-  const crimes = await prisma.crime.findMany();
-  res.json(crimes);
+  try {
+    const { userId, userRole } = req;
+    
+    let whereClause = {};
+    // If not admin, only show own crimes
+    if (userRole !== 'admin') {
+      whereClause = { userId: userId };
+    }
+
+    const crimes = await prisma.crime.findMany({
+      where: whereClause,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        user: {
+          select: { name: true, email: true }
+        }
+      }
+    });
+    
+    res.json(crimes);
+  } catch (error) {
+    console.error("Get Crimes Error:", error);
+    res.status(500).json({ message: "Failed to fetch reports", error: error.message });
+  }
 };
 
 exports.updateCrimeStatus = async (req, res) => {
