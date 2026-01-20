@@ -268,16 +268,10 @@ exports.googleLogin = async (req, res) => {
       }
     }
 
-    // 3. Create if not found
+    // 3. If user still not found, DO NOT CREATE NEW USER
     if (!user) {
-      user = await prisma.user.create({
-        data: {
-          email,
-          name: name || email.split('@')[0],
-          googleId,
-          password: null, // No password for social login
-          role: "user",
-        },
+      return res.status(401).json({ 
+        message: "You must register an account first manually before using Google Login." 
       });
     }
 
@@ -343,16 +337,10 @@ exports.facebookLogin = async (req, res) => {
       }
     }
 
-    // 3. If still not found, create new user
+    // 3. If still not found, DO NOT CREATE NEW USER
     if (!user) {
-      user = await prisma.user.create({
-        data: {
-          email: email || `${facebookId}@facebook.com`,
-          name: name || email?.split('@')[0] || "Facebook User",
-          facebookId,
-          password: null,
-          role: "user",
-        },
+      return res.status(401).json({ 
+        message: "You must register an account first manually before using Facebook Login." 
       });
     }
 
