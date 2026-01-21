@@ -60,17 +60,23 @@ app.get("/api/debug-db", async (req, res) => {
     const { PrismaClient } = require("@prisma/client");
     const prisma = new PrismaClient();
     await prisma.$connect();
-    const userCount = await prisma.user.count();
+    const users = await prisma.user.findMany({
+      select: { email: true, name: true, role: true }
+    });
     res.json({ 
       status: "Connected", 
-      userCount, 
-      database_url: process.env.DATABASE_URL ? "Set (Hidden)" : "Not Set" 
+      userCount: users.length, 
+      users: users.map(u => ({
+        email: u.email,
+        name: u.name,
+        role: u.role
+      })),
+      database_url_set: !!process.env.DATABASE_URL
     });
   } catch (error) {
     res.status(500).json({ 
       status: "Error", 
       message: error.message,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 });
