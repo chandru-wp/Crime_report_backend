@@ -62,7 +62,7 @@ exports.login = async (req, res) => {
     // Find user
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) {
-      return res.status(401).json({ message: "Invalid credentials" });
+      return res.status(401).json({ message: "Login failed: User not found with this email." });
     }
 
     // Check if user has a password (might be a social-only account)
@@ -75,7 +75,7 @@ exports.login = async (req, res) => {
     // Check password
     const isValidPassword = await bcrypt.compare(password, user.password);
     if (!isValidPassword) {
-      return res.status(401).json({ message: "Invalid credentials" });
+      return res.status(401).json({ message: "Login failed: Incorrect password." });
     }
 
     // Generate token
